@@ -776,7 +776,7 @@ function SlateTranscriptEditor(props) {
 
         if(mediaRef.current != null ){
           for( let i = 0; i < props.transcriptData.paragraphs.length; i++){
-            if(parseFloat(start) >= props.transcriptData.paragraphs[i].start && parseFloat(start) <= props.transcriptData.paragraphs[i].end){
+            if(parseFloat(start) >= props.transcriptData.paragraphs[i].start-0.3 && parseFloat(start) <= props.transcriptData.paragraphs[i].end){
                 prevDoneSound = i;
             }
           }
