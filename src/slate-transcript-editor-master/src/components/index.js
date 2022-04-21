@@ -75,6 +75,8 @@ const pauseWhileTypeing = (current) => {
 };
 const debouncePauseWhileTyping = debounce(pauseWhileTypeing, PAUSE_WHILTE_TYPING_TIMEOUT_MILLISECONDS);
 
+let prevDoneSound = 0;
+
 function SlateTranscriptEditor(props) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -105,8 +107,6 @@ function SlateTranscriptEditor(props) {
   let [activePIndex, setActivePIndex] = useState(null);
   let [beforeText, setBeforeText] = useState('');
   let [finishedPIndices, setFinishedPIndices] = useState([]);
-  const [playing, setPlaying] = useState(false);
-  const [audio1, setAudio1] = useState(null);
   // END variables for commandclips
 
   useEffect(() => {
@@ -346,7 +346,7 @@ function SlateTranscriptEditor(props) {
       default:
         return <DefaultElement {...props} />;
     }
-  }, [editMode, audioURL, activePIndex, playing, audio1]);
+  }, [editMode, audioURL, activePIndex]);
 
   const handleClassificationRadioButtonChange = (event) => {
     const key = event.target.name.split('_')[1];
@@ -517,7 +517,8 @@ function SlateTranscriptEditor(props) {
               title={props.element.speaker}
               onClick={handleSetSpeakerName.bind(this, props.element)}
             >
-              {props.element.speaker}
+              
+              {"props.element.speaker"}
             </Typography>
           </Grid>
         )}
@@ -570,61 +571,34 @@ function SlateTranscriptEditor(props) {
         setIsRecordingTTE(true);
         startRecording();
         setActivePIndex(index);
-
       }
     }
     const playCommandClip = () => {
-      if (!playing) {
-        setPlaying(true);
-        mediaRef.current.pause();
-        const a = new Audio(audioURL);
-        a.addEventListener('ended', () => setPlaying(false));
-        a.play();
-        setAudio1(a);
-      } else if (audio1 !== null) {
-        audio1.pause();
-        audio1.currentTime = 0;
-        setPlaying(false);
-      }
+      mediaRef.current.pause();
+      const a = new Audio(audioURL);
+      a.play();
     }
 
     const playCommandClipCheckMode = async () => {
-      if (!playing) {
-        setPlaying(true);
-        const audio = await localforage.getItem(parseInt(index) + 'commandclip');
-        if (audio !== null) {
-          if (beforeText === '') {
-            const bt = props.element.children[0].text;
-            setBeforeText(bt);
-          }
-          setActivePIndex(index);
-
-          const audioUrlFromBlob = URL.createObjectURL(audio);
-          setAudioUrl(audioUrlFromBlob);
-          const a = new Audio(audioUrlFromBlob);
-          a.addEventListener('ended', () => setPlaying(false));
-          a.play();
-          setAudio1(a);
-        } else {
-          setPlaying(false);
-          alert("no audio available, choose another audio file");
+      const audio = await localforage.getItem(parseInt(index) + 'commandclip');
+      if (audio !== null) {
+        if (beforeText === '') {
+          const bt = props.element.children[0].text;
+          setBeforeText(bt);
         }
-      } else if (audio1 !== null) {
-        audio1.pause();
-        audio1.currentTime = 0;
-        setPlaying(false);
+
+        setActivePIndex(index);
+
+        const audioUrlFromBlob = await URL.createObjectURL(audio);
+        setAudioUrl(audioUrlFromBlob);
+        const a = new Audio(audioUrlFromBlob);
+        a.play();
       } else {
-        setPlaying(false);
+        alert("no audio available, choose another audio file");
       }
     }
 
     const handleDone = async() => {
-      if (audio1 !== null) {
-        audio1.pause();
-        audio1.currentTime = 0;
-        setPlaying(false);
-      }
-
       if (finishedPIndices.includes(index)) {
         setFinishedPIndices(finishedPIndices.filter(pIndex => pIndex !== index));
         setActivePIndex(index);
@@ -632,7 +606,7 @@ function SlateTranscriptEditor(props) {
 
         const audio = await localforage.getItem(parseInt(index) + 'commandclip');
         if (audio !== null) {
-          const audioUrlFromBlob = URL.createObjectURL(audio);
+          const audioUrlFromBlob = await URL.createObjectURL(audio);
           setAudioUrl(audioUrlFromBlob);
         } else {
           setAudioUrl(true);
@@ -743,7 +717,7 @@ function SlateTranscriptEditor(props) {
               : (activePIndex != null && activePIndex !== index) || done
             }
           >
-             {playing && activePIndex === index ? <Stop/> : <PlayCircle/>}
+             <PlayCircle/>
           </IconButton>
           <IconButton onClick={handleDone} disabled={!(((activePIndex === index) && audioURL) || (activePIndex === null && finishedPIndices.includes(index))) || isRecordingTTE}>
             <DoneOutline/>
@@ -789,7 +763,7 @@ function SlateTranscriptEditor(props) {
 
     zip.generateAsync({type:"blob"}).then(
       function(content) {
-        saveAs(content, props.title + ".to_check.zip");
+        saveAs(content, props.title + "_done.zip");
       }
     );
   }
@@ -799,6 +773,15 @@ function SlateTranscriptEditor(props) {
       const start = e.target.dataset.start;
       if (mediaRef && mediaRef.current) {
         mediaRef.current.currentTime = parseFloat(start);
+
+        if(mediaRef.current != null ){
+          for( let i = 0; i < props.transcriptData.paragraphs.length; i++){
+            if(parseFloat(start) >= props.transcriptData.paragraphs[i].start && parseFloat(start) <= props.transcriptData.paragraphs[i].end){
+                prevDoneSound = i;
+            }
+          }
+        }
+
         mediaRef.current.play();
 
         if (props.handleAnalyticsEvents) {
@@ -1044,6 +1027,23 @@ function SlateTranscriptEditor(props) {
     return anchorOffset === totalChar && focusOffset ===totalChar;
   }
 
+  function stopTime(ctime){
+    if(mediaRef.current != null ){
+      for( let i = 0; i < props.transcriptData.paragraphs.length; i++){
+        if(ctime >= props.transcriptData.paragraphs[i].start-0.3 && ctime <= props.transcriptData.paragraphs[i].end){
+          if( i != prevDoneSound){
+            prevDoneSound = i;
+            mediaRef.current.currentTime = parseFloat(props.transcriptData.paragraphs[i].start);
+            mediaRef.current.pause();
+            console.log(ctime);
+          }
+        }
+      }
+    }
+
+    return generatePreviousTimingsUpToCurrent(ctime);
+  }
+
   const onPaste = async event =>{
     event.preventDefault();
     let text = event.clipboardData.getData('text/plain')
@@ -1137,7 +1137,7 @@ function SlateTranscriptEditor(props) {
         <Paper elevation={3} />
         <style scoped>
           {`/* Next words */
-             .timecode[data-previous-timings*="${generatePreviousTimingsUpToCurrent(currentTime)}"]{
+             .timecode[data-previous-timings*="${stopTime(currentTime)}"]{
                   color:  #9E9E9E;
               }
 
@@ -1205,53 +1205,6 @@ function SlateTranscriptEditor(props) {
                       <code style={{ color: 'grey' }}>{duration ? `${shortTimecode(duration)}` : '00:00:00'}</code>
                     </p>
                   </Grid>
-                  <Grid item>
-                    <FormControl>
-                      <Select labelId="demo-simple-select-label" id="demo-simple-select" value={playbackRate} onChange={handleSetPlaybackRate}>
-                        {PLAYBACK_RATE_VALUES.map((playbackRateValue, index) => {
-                          return (
-                            <MenuItem key={index + playbackRateValue} value={playbackRateValue}>
-                              {' '}
-                              x {playbackRateValue}
-                            </MenuItem>
-                          );
-                        })}
-                      </Select>
-                      <FormHelperText>Speed</FormHelperText>
-                    </FormControl>
-                  </Grid>
-                  <Grid item>
-                    <Tooltip title={<Typography variant="body1">{` Seek back by ${SEEK_BACK_SEC} seconds`}</Typography>}>
-                      <Button color="primary" onClick={handleSeekBack} block="true">
-                        <Replay10Icon color="primary" fontSize="large" />
-                      </Button>
-                    </Tooltip>
-                    <Tooltip title={<Typography variant="body1">{` Fast forward by ${SEEK_BACK_SEC} seconds`}</Typography>}>
-                      <Button color="primary" onClick={handleFastForward} block="true">
-                        <Forward10Icon color="primary" fontSize="large" />
-                      </Button>
-                    </Tooltip>
-                  </Grid>
-
-                  <Grid item>
-                    {props.isEditable && (
-                      <Tooltip
-                        enterDelay={3000}
-                        title={
-                          <Typography variant="body1">
-                            {`Turn ${isPauseWhiletyping ? 'off' : 'on'} pause while typing functionality. As
-                        you start typing the media while pause playback until you stop. Not
-                        reccomended on longer transcript as it might present performance issues.`}
-                          </Typography>
-                        }
-                      >
-                        <Typography variant="subtitle2" gutterBottom>
-                          <Switch color="primary" checked={isPauseWhiletyping} onChange={handleSetPauseWhileTyping} />
-                          Pause media while typing
-                        </Typography>
-                      </Tooltip>
-                    )}
-                  </Grid>
                 </Grid>
 
                 <Grid item>
@@ -1264,21 +1217,17 @@ function SlateTranscriptEditor(props) {
                             You are in read only mode. <br />
                           </>
                         )}
-                        Double click on a word or time stamp to jump to the corresponding point in the media. <br />
+                        - Click on a time stamp to listen to the corresponding recording or click play to listen to the next recording. <br />
+                        - If you hear 
+                        a sound and speech then label the recording as the correct sound and ignore the speech part. <br/>
+                         - If you hear none of the sounds or speech then label 
+                        the recording as "other". <br />
                         {props.isEditable && (
                           <>
-                            <KeyboardIcon /> Start typing to edit text.
-                            <br />
-                            <PeopleIcon /> You can add and change names of speakers in your transcript.
-                            <br />
-                            <KeyboardReturnOutlinedIcon /> Hit enter in between words to split a paragraph.
-                            <br />
-                            <SaveIcon />
-                            Remember to save regularly.
+                            - Remember to save regularly. (Download the labeled file with the button on the right.)
                             <br />
                           </>
                         )}
-                        <SaveAltIcon /> Export to get a copy.
                       </Typography>
                     }
                   >
@@ -1295,34 +1244,6 @@ function SlateTranscriptEditor(props) {
                       </Typography>
                     </div>
                   </Tooltip>
-                </Grid>
-                <Grid item>
-                  <Link
-                    color="inherit"
-                    onClick={() => {
-                      setShowSpeakersCheatShet(!showSpeakersCheatShet);
-                    }}
-                  >
-                    <Typography variant="subtitle2" gutterBottom>
-                      <b>Speakers</b>
-                    </Typography>
-                  </Link>
-
-                  <Collapse in={showSpeakersCheatShet}>
-                    {speakerOptions.map((speakerName, index) => {
-                      return (
-                        <Typography
-                          variant="body2"
-                          gutterBottom
-                          key={index + speakerName}
-                          className={'text-truncate'}
-                          title={speakerName.toUpperCase()}
-                        >
-                          {speakerName}
-                        </Typography>
-                      );
-                    })}
-                  </Collapse>
                 </Grid>
                 {/* <Grid item>{props.children}</Grid> */}
               </Grid>
