@@ -776,7 +776,7 @@ function SlateTranscriptEditor(props) {
 
         if(mediaRef.current != null ){
           for( let i = 0; i < props.transcriptData.paragraphs.length; i++){
-            if(parseFloat(start) >= props.transcriptData.paragraphs[i].start && parseFloat(start) <= props.transcriptData.paragraphs[i].end){
+            if(parseFloat(start) >= props.transcriptData.paragraphs[i].start-0.3 && parseFloat(start) <= props.transcriptData.paragraphs[i].end){
                 prevDoneSound = i;
             }
           }
@@ -1217,11 +1217,12 @@ function SlateTranscriptEditor(props) {
                             You are in read only mode. <br />
                           </>
                         )}
-                        - Click on a time stamp to listen to the corresponding recording or click play to listen to the next recording. <br />
-                        - If you hear 
-                        a sound and speech then label the recording as the correct sound and ignore the speech part. <br/>
-                         - If you hear none of the sounds or speech then label 
-                        the recording as "other". <br />
+                        - Click play to listen to the next recording.<br />
+                        - Click on a time stamp to listen to the corresponding recording.<br />
+                        - Label the recording as a non vocal sound, if such a sound occures.<br />
+                        - Otherwise label the recording as a hesitation if you hear a hesitation (Example: "mhhhh","ahhhhm","eeeeehhh") <br/>
+                        - Otherwise label the recording as speech if you hear specific words. <br />
+                        - Otherwise label the recording as other.<br />
                         {props.isEditable && (
                           <>
                             - Remember to save regularly. (Download the labeled file with the button on the right.)

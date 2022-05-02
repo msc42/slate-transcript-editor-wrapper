@@ -143,13 +143,6 @@ function SideBtns({
             </Button>
           </Tooltip>
         }
-        {isEditable &&
-          <Tooltip title={<Typography variant="body1">Submit Task</Typography>}>
-            <Button disabled={isProcessing} onClick={handleSave} color="primary">
-              <BackupOutlined color={isContentSaved ? 'primary' : 'secondary'} />
-            </Button>
-          </Tooltip>
-        }
       </Grid>
       {isEditable && (
         <>
@@ -184,35 +177,6 @@ function SideBtns({
           </Grid> */}
 
           {/*  */}
-          <Grid item>
-            <br />
-          </Grid>
-          <Grid item>
-            <Tooltip
-              title={
-                <Typography variant="body1">
-                  Undo <br />
-                  <code>cmd</code> <code>z</code>
-                </Typography>
-              }
-            >
-              <Button onClick={handleUndo} color="primary">
-                <UndoOutlinedIcon color="primary" />
-              </Button>
-            </Tooltip>
-
-            <Tooltip
-              title={
-                <Typography variant="body1">
-                  Redo <br /> <code>cmd</code> <code>shift</code> <code>z</code>
-                </Typography>
-              }
-            >
-              <Button onClick={handleRedo} color="primary">
-                <RedoIcon color="primary" />
-              </Button>
-            </Tooltip>
-          </Grid>
           {/* <Tooltip
         title={
           ' Restore timecodes. At the moment for transcript over 1hour it could temporarily freeze the UI for a few seconds'
